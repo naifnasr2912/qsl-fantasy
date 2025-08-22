@@ -16,7 +16,7 @@ export default function LoginPage() {
 
   async function handleAuth(e: React.FormEvent) { 
 
-	    e.preventDefault(); 
+        e.preventDefault(); 
 
     setMsg(""); 
 
