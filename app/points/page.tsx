@@ -3,32 +3,31 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient"; 
 import { scoreOne, PlayerRow } from "@/lib/scoring"; 
 import {t , getLang } from "@/lib/i18n";
+import { useRequireAuth } from "@/lib/useRequireAuth"; 
+import { read } from "fs";
 
 const GW = 1; 
 
 type PickRow = { player_id: number; is_captain: boolean }; 
 
 export default function PointsPage() { 
-  const lang = getLang();
-  const [userId, setUserId] = useState<string | null>(null); 
+  const { ready, userId } = useRequireAuth("/points"); 
+
+  if (!ready) return null; 
+  const lang = getLang(); 
   const [players, setPlayers] = useState<Record<number, PlayerRow>>({}); 
   const [picks, setPicks] = useState<PickRow[]>([]); 
   const [loading, setLoading] = useState(true);
   
   useEffect(() => { 
+    if (!ready || !userId) return;
 
     (async () => { 
-
-      const { data: u } = await supabase.auth.getUser(); 
-
-      if (!u?.user) { window.location.href = "/login"; return; } 
-
-      setUserId(u.user.id);
       
       const { data: pickRows, error: pickErr } = await supabase 
         .from("picks") 
         .select("player_id,is_captain") 
-        .eq("user_id", u.user.id) 
+        .eq("user_id", userId) 
         .eq("gameweek_id", GW);
       
       if (pickErr) { console.error(pickErr); setLoading(false); return; } 
@@ -65,7 +64,7 @@ export default function PointsPage() {
 
     })(); 
 
-  }, []); 
+  }, [ready, userId]); 
 
   const total = useMemo(() => 
 
