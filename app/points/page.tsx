@@ -11,9 +11,7 @@ const GW = 1;
 type PickRow = { player_id: number; is_captain: boolean }; 
 
 export default function PointsPage() { 
-  const { ready, userId } = useRequireAuth("/points"); 
-
-  if (!ready) return null; 
+  const { ready, userId } = useRequireAuth("/points");  
   const lang = getLang(); 
   const [players, setPlayers] = useState<Record<number, PlayerRow>>({}); 
   const [picks, setPicks] = useState<PickRow[]>([]); 
@@ -87,6 +85,8 @@ export default function PointsPage() {
 
     </div>
   );
+
+  if (!ready) return null;
   
   return ( 
 

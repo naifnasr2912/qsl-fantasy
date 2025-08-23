@@ -27,8 +27,7 @@ const GW = 1;
 
 export default function PickPage() { 
   const { ready, userId } = useRequireAuth("/pick"); 
-
-  if (!ready) return null; // or a spinner 
+ 
 
  
   const router = useRouter(); 
@@ -178,8 +177,12 @@ setLoading(false);
     else alert(t("Saved",lang)); 
 
   }
+
+  if (!ready) return null; // or a spinner
   
   if (loading) return <div className="rounded-2xl shadow p-4 bg-white">{t("loading",lang)}</div>;
+
+  
   
   return (
     <div className="space-y-4">
