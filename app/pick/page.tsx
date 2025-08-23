@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import PlayerCard from "@/components/PlayerCard"; 
 import FilterBar, { Filters } from "@/components/FilterBar"; 
 import { t, getLang } from "@/lib/i18n";
+import { useRouter } from "next/navigation"; 
 
 type PlayerRow = { 
 
@@ -24,6 +25,10 @@ type PickRow = { player_id: number; is_captain: boolean };
 const GW = 1;
 
 export default function PickPage() { 
+  const router = useRouter(); 
+
+  const [ready, setReady] = useState(false); 
+
   const lang = getLang()
 
   const [players, setPlayers] = useState<PlayerRow[]>([]); 
@@ -43,6 +48,32 @@ export default function PickPage() {
   
 
   const [filters, setFilters] = useState<Filters>({ q: "", pos: "ALL", club: "ALL" }); 
+
+  useEffect(() => { 
+
+  async function check() { 
+
+    const { data } = await supabase.auth.getUser(); 
+
+    if (!data.user) { 
+
+      router.replace("/login?next=/pick"); 
+
+      return; 
+
+    } 
+
+    setReady(true); 
+
+  } 
+
+  check(); 
+
+}, [router]); 
+
+  
+
+if (!ready) return null; // stop here until auth check finishes 
 
   
 
