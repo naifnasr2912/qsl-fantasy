@@ -1,4 +1,10 @@
+import { useRequireAuth } from "@/lib/useRequireAuth"; 
+
+
 export default function LeaguesPage() { 
+  const { ready, userId } = useRequireAuth("/leagues"); 
+
+  if (!ready) return null; 
 
   return ( 
 
