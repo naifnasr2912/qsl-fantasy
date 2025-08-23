@@ -1,3 +1,7 @@
+import Link from "next/link"; 
+
+  
+
 export default function HomePage() { 
 
   return ( 
@@ -14,9 +18,11 @@ export default function HomePage() {
 
         </p> 
 
-        <a 
+  
 
-          href="/pick" 
+        <Link 
+
+          href="/login" 
 
           className="mt-4 inline-flex items-center justify-center h-12 w-full rounded-2xl bg-black text-white font-medium" 
 
@@ -24,7 +30,7 @@ export default function HomePage() {
 
           Play Now 
 
-        </a> 
+        </Link> 
 
       </section> 
 
