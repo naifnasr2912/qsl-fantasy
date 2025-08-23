@@ -5,6 +5,7 @@ import PlayerCard from "@/components/PlayerCard";
 import FilterBar, { Filters } from "@/components/FilterBar"; 
 import { t, getLang } from "@/lib/i18n";
 import { useRouter } from "next/navigation"; 
+import { useRequireAuth } from "@/lib/useRequireAuth"; 
 
 type PlayerRow = { 
 
@@ -25,9 +26,14 @@ type PickRow = { player_id: number; is_captain: boolean };
 const GW = 1;
 
 export default function PickPage() { 
+  const { ready, userId } = useRequireAuth("/pick"); 
+
+  if (!ready) return null; // or a spinner 
+
+ 
   const router = useRouter(); 
 
-  const [ready, setReady] = useState(false); 
+   
 
   const lang = getLang()
 
@@ -41,85 +47,54 @@ export default function PickPage() {
 
   const [captain, setCaptain] = useState<number | null>(null); 
 
-  const [userId, setUserId] = useState<string | null>(null); 
+  
 
   const [saving, setSaving] = useState(false); 
 
   
-
+  
   const [filters, setFilters] = useState<Filters>({ q: "", pos: "ALL", club: "ALL" }); 
 
-  useEffect(() => { 
-
-  async function check() { 
-
-    const { data } = await supabase.auth.getUser(); 
-
-    if (!data.user) { 
-
-      router.replace("/login?next=/pick"); 
-
-      return; 
-
-    } 
-
-    setReady(true); 
-
-  } 
-
-  check(); 
-
-}, [router]); 
 
   
-
-if (!ready) return null; // stop here until auth check finishes 
-
   
 
   // load user + players (and existing picks, if any) 
 
   useEffect(() => { 
+    if (!ready || !userId) return; // wait until auth is ready 
+
     (async () => { 
-
-      const { data: u } = await supabase.auth.getUser(); 
-
-      if (!u?.user) { window.location.href = "/login"; return; } 
-
-      setUserId(u.user.id); 
-
       // players 
+      const { data: pls, error } = await supabase .from("players") .select("id,name,club,position,underdog") .order("club", { ascending: true }); 
 
-      const { data: pls, error } = await supabase 
-
-        .from("players") 
-
-        .select("id,name,club,position,underdog") 
-
-        .order("club", { ascending: true }); 
-
-      if (error) { console.error(error); alert("Could not load players"); setLoading(false); return; }
-      
-      setPlayers(pls as PlayerRow[]); 
-      setClubs(Array.from(new Set((pls ?? []).map(p => p.club))).sort());
-      
-      // existing picks for this GW 
-      const { data: picks } = await supabase 
-      .from("picks") 
-      .select("player_id,is_captain") 
-      .eq("user_id", u.user.id) 
-      .eq("gameweek_id", GW); 
+if (error) {  
+  console.error(error);  
+  alert("Could not load players");  
+  setLoading(false);  
+  return;  
+} 
  
-      if (picks && picks.length) {
-        setSelected(picks.map(p => p.player_id)); 
-        const cap = picks.find(p => p.is_captain)?.player_id ?? null; 
-        setCaptain(cap); 
-      } 
-      setLoading(false); 
+setPlayers(pls as PlayerRow[]); 
+setClubs(Array.from(new Set((pls ?? []).map(p => p.club))).sort()); 
+ 
+// existing picks for this GW 
+const { data: picks } = await supabase 
+  .from("picks") 
+  .select("player_id,is_captain") 
+  .eq("user_id", userId)           // ← use hook value 
+  .eq("gameweek_id", GW); 
+ 
+if (picks && picks.length) { 
+  setSelected(picks.map(p => p.player_id)); 
+  const cap = picks.find(p => p.is_captain)?.player_id ?? null; 
+  setCaptain(cap); 
+} 
+ 
+setLoading(false); 
+  
 
-    })(); 
-
-  }, []);
+})(); }, [ready, userId]); // ← depend on these 
 
   // filtering 
 
