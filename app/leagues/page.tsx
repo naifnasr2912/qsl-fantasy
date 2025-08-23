@@ -1,3 +1,6 @@
+"use client";
+
+
 import { useRequireAuth } from "@/lib/useRequireAuth"; 
 
 
