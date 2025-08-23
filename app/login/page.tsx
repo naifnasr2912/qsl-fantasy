@@ -1,10 +1,13 @@
 "use client"; 
-
 import { useState } from "react"; 
+
+import { useRouter, useSearchParams } from "next/navigation"; 
 
 import { supabase } from "@/lib/supabaseClient"; 
 
 import { ensureAndGetProfile } from "@/lib/profile"; 
+
+  
 
 export default function LoginPage() { 
 
@@ -14,33 +17,47 @@ export default function LoginPage() {
 
   const [msg, setMsg] = useState<string>(""); 
 
+  
+
+  const router = useRouter(); 
+
+  const searchParams = useSearchParams(); 
+
+  const next = searchParams.get("next") ?? "/pick"; 
+
+  
+
   async function handleAuth(e: React.FormEvent) { 
 
-        e.preventDefault(); 
+    e.preventDefault(); 
 
     setMsg(""); 
 
   
 
-    // Try sign-in first 
+    // 1) Try sign in 
 
-    const signIn = await supabase.auth.signInWithPassword({ email, password }); 
+    const { data: signInData, error: signInErr } = 
 
-    if (signIn.error) { 
+      await supabase.auth.signInWithPassword({ email, password }); 
 
-      // If no account, create it quickly 
+  
 
-      const signUp = await supabase.auth.signUp({ email, password }); 
+    if (!signInErr && signInData.user) { 
 
-      if (signUp.error) { 
+      try { 
 
-        setMsg(`Sign up error: ${signUp.error.message}`); 
+        await ensureAndGetProfile(); 
 
-        return; 
+      } catch (e: any) { 
+
+        // Not fatal; we still redirect if auth worked 
+
+        console.error(e); 
 
       } 
 
-      setMsg("Account created. Press Sign In again."); 
+      router.replace(next); // ✅ redirect after successful login 
 
       return; 
 
@@ -48,31 +65,69 @@ export default function LoginPage() {
 
   
 
-    try { 
+    // 2) If sign-in failed, try sign-up 
 
-      const profile = await ensureAndGetProfile(); 
+    const { data: signUpData, error: signUpErr } = 
 
-      setMsg(`Signed in! Hello ${profile.display_name ?? profile.email}`); 
-
-      // Optional redirect: 
-
-      // window.location.href = "/pick"; 
-
-    } catch (e: any) { 
-
-      setMsg(`Signed in, but profile error: ${e.message}`); 
-
-    } 
-
-  } 
+      await supabase.auth.signUp({ email, password }); 
 
   
 
-  async function signOut() { 
+    if (signUpErr) { 
 
-    await supabase.auth.signOut(); 
+      setMsg(`Sign up error: ${signUpErr.message}`); 
 
-    setMsg("Signed out"); 
+      return; 
+
+    } 
+
+  
+
+    // Depending on your Supabase Auth settings, signUp may or may not create a session. 
+
+    // If a session exists, redirect; if email confirmation is required, show a message. 
+
+    if (signUpData.user) { 
+
+      // Try to fetch/create profile; ignore errors for redirect 
+
+      try { 
+
+        await ensureAndGetProfile(); 
+
+      } catch (e: any) { 
+
+        console.error(e); 
+
+      } 
+
+  
+
+      // If email confirmation is OFF, session exists -> redirect now 
+
+      const { data: sessionCheck } = await supabase.auth.getSession(); 
+
+      if (sessionCheck.session) { 
+
+        router.replace(next); 
+
+        return; 
+
+      } 
+
+  
+
+      // Email confirmation ON -> ask user to verify then sign in 
+
+      setMsg("Account created. Please verify your email, then sign in."); 
+
+      return; 
+
+    } 
+
+  
+
+    setMsg("Could not sign in or sign up. Please try again."); 
 
   } 
 
@@ -80,55 +135,60 @@ export default function LoginPage() {
 
   return ( 
 
-    <div className="rounded-2xl shadow p-4 bg-white"> 
+    <div className="space-y-4"> 
 
-      <h2 className="text-lg font-semibold">Sign in / Sign up</h2> 
+      <form onSubmit={handleAuth} className="rounded-2xl shadow p-4 bg-white space-y-3"> 
 
-      <form onSubmit={handleAuth} className="grid gap-2 mt-3"> 
+        <h1 className="text-xl font-semibold">Login</h1> 
 
         <input 
-
-          className="h-12 rounded-2xl border px-4" 
 
           type="email" 
 
-          required 
+          className="w-full rounded-xl border p-3" 
 
-          placeholder="you@email.com" 
+          placeholder="you@example.com" 
 
           value={email} 
 
-          onChange={(e)=>setEmail(e.target.value)} 
+          onChange={(e) => setEmail(e.target.value)} 
+
+          required 
 
         /> 
 
         <input 
 
-          className="h-12 rounded-2xl border px-4" 
-
           type="password" 
 
-          required 
+          className="w-full rounded-xl border p-3" 
 
-          placeholder="password (min 6)" 
+          placeholder="••••••••" 
 
           value={password} 
 
-          onChange={(e)=>setPassword(e.target.value)} 
+          onChange={(e) => setPassword(e.target.value)} 
+
+          required 
 
         /> 
 
-        <button className="h-12 rounded-2xl bg-black text-white font-medium">Sign In</button> 
+        <button 
+
+          type="submit" 
+
+          className="w-full h-12 rounded-2xl bg-black text-white font-medium"
+        >
+          Continue 
+        </button>
+
+        {msg ? ( 
+
+          <p className="text-sm text-center opacity-80">{msg}</p> 
+
+        ) : null} 
 
       </form> 
-
-      {msg && <p className="text-sm mt-2">{msg}</p>} 
-
-      <button onClick={signOut} className="mt-3 h-12 rounded-2xl bg-gray-200 w-full font-medium"> 
-
-        Sign out 
-
-      </button> 
 
     </div> 
 
