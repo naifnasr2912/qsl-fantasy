@@ -1,4 +1,9 @@
 "use client"; 
+
+  
+
+import { Suspense } from "react"; 
+
 import { useState } from "react"; 
 
 import { useRouter, useSearchParams } from "next/navigation"; 
@@ -10,6 +15,24 @@ import { ensureAndGetProfile } from "@/lib/profile";
   
 
 export default function LoginPage() { 
+
+  // Only render the form inside Suspense 
+
+  return ( 
+
+    <Suspense fallback={null}> 
+
+      <LoginForm /> 
+
+    </Suspense> 
+
+  ); 
+
+} 
+
+  
+
+function LoginForm() { 
 
   const [email, setEmail] = useState(""); 
 
@@ -35,8 +58,6 @@ export default function LoginPage() {
 
   
 
-    // 1) Try sign in 
-
     const { data: signInData, error: signInErr } = 
 
       await supabase.auth.signInWithPassword({ email, password }); 
@@ -45,27 +66,15 @@ export default function LoginPage() {
 
     if (!signInErr && signInData.user) { 
 
-      try { 
+      try { await ensureAndGetProfile(); } catch {} 
 
-        await ensureAndGetProfile(); 
-
-      } catch (e: any) { 
-
-        // Not fatal; we still redirect if auth worked 
-
-        console.error(e); 
-
-      } 
-
-      router.replace(next); // ✅ redirect after successful login 
+      router.replace(next); 
 
       return; 
 
     } 
 
   
-
-    // 2) If sign-in failed, try sign-up 
 
     const { data: signUpData, error: signUpErr } = 
 
@@ -73,65 +82,21 @@ export default function LoginPage() {
 
   
 
-    if (signUpErr) { 
-
-      setMsg(`Sign up error: ${signUpErr.message}`); 
-
-      return; 
-
-    } 
+    if (signUpErr) { setMsg(`Sign up error: ${signUpErr.message}`); return; } 
 
   
 
-    // Depending on your Supabase Auth settings, signUp may or may not create a session. 
+    try { await ensureAndGetProfile(); } catch {} 
 
-    // If a session exists, redirect; if email confirmation is required, show a message. 
+    const { data: sessionCheck } = await supabase.auth.getSession(); 
 
-    if (signUpData.user) { 
-
-      // Try to fetch/create profile; ignore errors for redirect 
-
-      try { 
-
-        await ensureAndGetProfile(); 
-
-      } catch (e: any) { 
-
-        console.error(e); 
-
-      } 
+    if (sessionCheck.session) { router.replace(next); return; } 
 
   
 
-      // If email confirmation is OFF, session exists -> redirect now 
-
-      const { data: sessionCheck } = await supabase.auth.getSession(); 
-
-      if (sessionCheck.session) { 
-
-        router.replace(next); 
-
-        return; 
-
-      } 
-
-  
-
-      // Email confirmation ON -> ask user to verify then sign in 
-
-      setMsg("Account created. Please verify your email, then sign in."); 
-
-      return; 
-
-    } 
-
-  
-
-    setMsg("Could not sign in or sign up. Please try again."); 
+    setMsg("Account created. Please verify your email, then sign in."); 
 
   } 
-
-  
 
   return ( 
 
@@ -141,52 +106,33 @@ export default function LoginPage() {
 
         <h1 className="text-xl font-semibold">Login</h1> 
 
-        <input 
+  
 
-          type="email" 
+        <input type="email" className="w-full rounded-xl border p-3" 
 
-          className="w-full rounded-xl border p-3" 
+               placeholder="you@example.com" value={email} 
 
-          placeholder="you@example.com" 
+               onChange={(e) => setEmail(e.target.value)} required /> 
 
-          value={email} 
+  
 
-          onChange={(e) => setEmail(e.target.value)} 
+        <input type="password" className="w-full rounded-xl border p-3" 
 
-          required 
+               placeholder="••••••••" value={password} 
 
-        /> 
+               onChange={(e) => setPassword(e.target.value)} required /> 
 
-        <input 
+  
 
-          type="password" 
+        <button type="submit" className="w-full h-12 rounded-2xl bg-black text-white font-medium"> 
 
-          className="w-full rounded-xl border p-3" 
-
-          placeholder="••••••••" 
-
-          value={password} 
-
-          onChange={(e) => setPassword(e.target.value)} 
-
-          required 
-
-        /> 
-
-        <button 
-
-          type="submit" 
-
-          className="w-full h-12 rounded-2xl bg-black text-white font-medium"
-        >
           Continue 
-        </button>
 
-        {msg ? ( 
+        </button> 
 
-          <p className="text-sm text-center opacity-80">{msg}</p> 
+  
 
-        ) : null} 
+        {msg ? <p className="text-sm text-center opacity-80">{msg}</p> : null} 
 
       </form> 
 
