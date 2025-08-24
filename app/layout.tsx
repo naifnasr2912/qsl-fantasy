@@ -2,13 +2,16 @@ import "./globals.css";
 
 import type { ReactNode } from "react"; 
 
-import TopBar from "@/components/TopBar"; 
-
 import BottomNav from "@/components/BottomNav"; 
+
+import dynamic from "next/dynamic";
+
+const TopBar = dynamic(() => import("@/components/TopBar"), { ssr: false });
 
   
 
 export default function RootLayout({ children }: { children: ReactNode }) { 
+
 
   return ( 
 

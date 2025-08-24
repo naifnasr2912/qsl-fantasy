@@ -20,11 +20,15 @@ export default function TopBar() {
 
   const [signedIn, setSignedIn] = useState(false); 
 
+  const [mounted, setMounted] = useState(false);
+
   
 
   // check if user is signed in 
 
   useEffect(() => { 
+    
+    setMounted(true);
 
     async function checkUser() { 
 
@@ -56,7 +60,9 @@ export default function TopBar() {
 
   }, []); 
 
-  
+  if (!mounted) return null; // avoid hydration mismatch
+
+
 
   async function handleLogout() { 
 
