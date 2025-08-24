@@ -22,7 +22,7 @@ export default function TopBar() {
 
   
 
-  // UI/auth state 
+  // UI state 
 
   const [signedIn, setSignedIn] = useState(false); 
 
@@ -32,33 +32,37 @@ export default function TopBar() {
 
   
 
-  // On mount: check current user and subscribe to auth changes 
+  // On mount: read current session and subscribe to auth changes 
 
   useEffect(() => { 
 
-    let unsubscribe: (() => void) | undefined; 
+    let isActive = true; 
 
   
 
-    async function checkUser() { 
+    const load = async () => { 
 
-      const { data } = await supabase.auth.getUser(); 
+      const { data } = await supabase.auth.getSession(); 
 
-      setSignedIn(!!data.user); 
+      if (!isActive) return; 
 
-      setEmail(data.user?.email ?? null); 
+      setSignedIn(!!data.session?.user); 
 
-    } 
+      setEmail(data.session?.user?.email ?? null); 
 
-  
+      setMounted(true); 
 
-    checkUser(); 
+    }; 
+
+    load(); 
 
   
 
     const { data: listener } = supabase.auth.onAuthStateChange( 
 
       (_event: AuthChangeEvent, session: Session | null) => { 
+
+        if (!isActive) return; 
 
         setSignedIn(!!session?.user); 
 
@@ -70,15 +74,11 @@ export default function TopBar() {
 
   
 
-    unsubscribe = () => listener.subscription.unsubscribe(); 
-
-    setMounted(true); 
-
-  
-
     return () => { 
 
-      unsubscribe?.(); 
+      isActive = false; 
+
+      listener.subscription.unsubscribe(); 
 
     }; 
 
@@ -86,7 +86,7 @@ export default function TopBar() {
 
   
 
-  // Avoid hydration mismatch 
+  // Avoid mismatch while the client hydrates 
 
   if (!mounted) return null; 
 
@@ -106,31 +106,24 @@ export default function TopBar() {
 
   } 
 
-  return ( 
+  return (
     <div className="mx-auto max-w-screen-sm px-4 h-14 flex items-center justify-between"> 
-    {/* left: title */} 
 
-<div className="font-semibold">QSL Fantasy</div> 
+{/* left: title */} 
+    <div className="font-semibold">QSL Fantasy</div> 
 
 {/* right: actions */} 
-
- 
-
-     <div className="flex items-center gap-4"> 
+    <div className="flex items-center gap-4"> 
 
         {signedIn ? ( 
 
           <> 
 
-            {email && ( 
+            {email ? ( 
 
-              <span className="text-xs text-gray-500 hidden sm:inline"> 
+              <span className="text-sm text-gray-600 hidden sm:inline"> {email}</span> 
 
-                {email} 
-
-              </span> 
-
-            )} 
+            ) : null} 
 
             <button 
 
@@ -167,3 +160,4 @@ export default function TopBar() {
   ); 
 
 } 
+
