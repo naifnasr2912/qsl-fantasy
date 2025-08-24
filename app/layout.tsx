@@ -4,9 +4,7 @@ import type { ReactNode } from "react";
 
 import BottomNav from "@/components/BottomNav"; 
 
-import dynamic from "next/dynamic";
-
-const TopBar = dynamic(() => import("@/components/TopBar"), { ssr: false });
+import HeaderShell from "@/components/HeaderShell";
 
   
 
@@ -23,7 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
           <div className="mx-auto max-w-screen-sm px-4 h-14 flex items-center justify-between"> 
 
-            <TopBar /> 
+            <HeaderShell />
 
           </div> 
 
