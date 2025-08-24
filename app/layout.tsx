@@ -12,9 +12,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return ( 
 
-    <html lang="en"> 
+    <html lang="en" suppressHydrationWarning>
 
-      <body> 
+      <body suppressHydrationWarning>
 
         <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur"> 
 
