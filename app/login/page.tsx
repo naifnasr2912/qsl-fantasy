@@ -4,7 +4,7 @@
 
 import { Suspense } from "react"; 
 
-import { useState } from "react"; 
+import { useState , useEffect } from "react"; 
 
 import { useRouter, useSearchParams } from "next/navigation"; 
 
@@ -40,7 +40,7 @@ function LoginForm() {
 
   const [msg, setMsg] = useState<string>(""); 
 
-  
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null); 
 
   const router = useRouter(); 
 
@@ -48,7 +48,26 @@ function LoginForm() {
 
   const next = searchParams.get("next") ?? "/pick"; 
 
+  useEffect(() => { 
+
+  let ignore = false; 
+
   
+
+  (async () => { 
+
+    const { data } = await supabase.auth.getSession(); 
+
+    if (!ignore) setCurrentEmail(data.session?.user?.email ?? null); 
+
+  })(); 
+
+  
+
+  return () => { ignore = true; }; 
+
+}, []); 
+
 
   async function handleAuth(e: React.FormEvent) { 
 
@@ -67,8 +86,11 @@ function LoginForm() {
     if (!signInErr && signInData.user) { 
 
       try { await ensureAndGetProfile(); } catch {} 
+      
+      setCurrentEmail(email);
 
       router.replace(next); 
+      
 
       return; 
 
@@ -82,7 +104,12 @@ function LoginForm() {
 
   
 
-    if (signUpErr) { setMsg(`Sign up error: ${signUpErr.message}`); return; } 
+    if (signUpErr) { 
+      setMsg(`Sign up error: ${signUpErr.message}`); 
+      
+      setCurrentEmail(email);
+
+      return; } 
 
   
 
@@ -95,6 +122,8 @@ function LoginForm() {
   
 
     setMsg("Account created. Please verify your email, then sign in."); 
+  
+    
 
   } 
 
@@ -145,6 +174,16 @@ function LoginForm() {
   
 
         {msg ? <p className="text-sm text-center opacity-80">{msg}</p> : null} 
+
+        {currentEmail && ( 
+
+  <p className="mb-2 text-sm text-gray-600"> 
+
+    Logged in as: <span className="font-medium">{currentEmail}</span> 
+
+  </p> 
+
+)} 
 
       </form> 
 
