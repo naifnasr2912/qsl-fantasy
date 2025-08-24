@@ -58,13 +58,21 @@ function SignupForm() {
 
       const { data } = await supabase.auth.getSession(); 
 
-      if (!ignore) setCurrentEmail(data.session?.user?.email ?? null); 
+      if (ignore) return; 
+
+      const email = data.session?.user?.email ?? null;
+      setCurrentEmail(email);
+
+      // if already signed in, redirect to ?next= or /pick
+      if (email) {
+        router.replace(next);
+        }
 
     })(); 
 
     return () => { ignore = true; }; 
 
-  }, []); 
+  }, [router, next ]); 
 
   
 
