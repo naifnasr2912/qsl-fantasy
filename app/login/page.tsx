@@ -130,6 +130,18 @@ function LoginForm() {
 
         </button> 
 
+        <p className="mt-2 text-center text-sm text-gray-600"> 
+
+          Don’t have an account?{" "} 
+
+          <a href="/signup" className="text-blue-600 underline"> 
+
+            Sign up 
+
+            </a> 
+
+          </p> 
+
   
 
         {msg ? <p className="text-sm text-center opacity-80">{msg}</p> : null} 
