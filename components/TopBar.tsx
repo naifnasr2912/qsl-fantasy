@@ -6,11 +6,13 @@ import Link from "next/link";
 
 import LanguageToggle from "@/components/LanguageToggle"; 
 
-import { supabase } from "@/lib/supabaseClient"; 
+import {supabase} from "@/lib/supabaseClient"; 
 
 import { useRouter } from "next/navigation"; 
 
 import { useEffect, useState } from "react"; 
+
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js"; 
 
   
 
@@ -18,17 +20,25 @@ export default function TopBar() {
 
   const router = useRouter(); 
 
+  
+
+  // UI/auth state 
+
   const [signedIn, setSignedIn] = useState(false); 
 
-  const [mounted, setMounted] = useState(false);
+  const [email, setEmail] = useState<string | null>(null); 
+
+  const [mounted, setMounted] = useState(false); 
 
   
 
-  // check if user is signed in 
+  // On mount: check current user and subscribe to auth changes 
 
   useEffect(() => { 
-    
-    setMounted(true);
+
+    let unsubscribe: (() => void) | undefined; 
+
+  
 
     async function checkUser() { 
 
@@ -36,33 +46,51 @@ export default function TopBar() {
 
       setSignedIn(!!data.user); 
 
+      setEmail(data.user?.email ?? null); 
+
     } 
+
+  
 
     checkUser(); 
 
   
 
-    // listen for changes in auth state 
+    const { data: listener } = supabase.auth.onAuthStateChange( 
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { 
+      (_event: AuthChangeEvent, session: Session | null) => { 
 
-      setSignedIn(!!session?.user); 
+        setSignedIn(!!session?.user); 
 
-    }); 
+        setEmail(session?.user?.email ?? null); 
+
+      } 
+
+    ); 
+
+  
+
+    unsubscribe = () => listener.subscription.unsubscribe(); 
+
+    setMounted(true); 
 
   
 
     return () => { 
 
-      listener.subscription.unsubscribe(); 
+      unsubscribe?.(); 
 
     }; 
 
   }, []); 
 
-  if (!mounted) return null; // avoid hydration mismatch
+  
 
+  // Avoid hydration mismatch 
 
+  if (!mounted) return null; 
+
+  
 
   async function handleLogout() { 
 
@@ -76,39 +104,55 @@ export default function TopBar() {
 
     } 
 
-  }
-  
+  } 
+
   return ( 
     <div className="mx-auto max-w-screen-sm px-4 h-14 flex items-center justify-between"> 
+    {/* left: title */} 
 
-{/* left: title */} 
-
-     <div className="font-semibold">QSL Fantasy</div> 
+<div className="font-semibold">QSL Fantasy</div> 
 
 {/* right: actions */} 
-    <div className="flex items-center gap-4"> 
 
-       {!signedIn ? ( 
+ 
+
+     <div className="flex items-center gap-4"> 
+
+        {signedIn ? ( 
+
+          <> 
+
+            {email && ( 
+
+              <span className="text-xs text-gray-500 hidden sm:inline"> 
+
+                {email} 
+
+              </span> 
+
+            )} 
+
+            <button 
+
+              onClick={handleLogout} 
+
+              className="text-sm underline text-gray-700 hover:text-black" 
+
+            > 
+
+              Sign out 
+
+            </button> 
+
+          </> 
+
+        ) : ( 
 
           <Link href="/login" className="text-sm underline"> 
 
             Login 
 
           </Link> 
-
-        ) : ( 
-
-         <button 
-
-            onClick={handleLogout} 
-
-            className="text-sm underline text-gray-700 hover:text-black" 
-
-          > 
-
-            Sign out 
-
-          </button> 
 
         )} 
 
@@ -123,5 +167,3 @@ export default function TopBar() {
   ); 
 
 } 
-  
-  
