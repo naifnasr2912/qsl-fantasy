@@ -1,3 +1,5 @@
+// components/TopBar.tsx 
+
 "use client"; 
 
   
@@ -6,15 +8,94 @@ import Link from "next/link";
 
 import LanguageToggle from "@/components/LanguageToggle"; 
 
-import {supabase} from "@/lib/supabaseClient"; 
+import { supabase } from "@/lib/supabaseClient"; // if yours is named export, use { supabase } 
 
 import { useRouter } from "next/navigation"; 
 
 import { useEffect, useState } from "react"; 
 
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js"; 
+  
+
+// Simple dropdown using <details> (no extra deps) 
+
+function UserMenu({ 
+
+  email, 
+
+  onLogout, 
+
+}: { 
+
+  email: string | null; 
+
+  onLogout: () => Promise<void>; 
+
+}) { 
+
+  if (!email) { 
+
+    return ( 
+
+      <Link href="/login" className="text-sm underline"> 
+
+        Login 
+
+      </Link> 
+
+    ); 
+
+  } 
 
   
+
+  const initial = email?.[0]?.toUpperCase() ?? "U"; 
+
+return ( 
+
+    <details className="relative"> 
+
+      <summary 
+
+        className="list-none flex items-center gap-2 cursor-pointer select-none" 
+
+        aria-label="Open user menu" 
+
+      > 
+
+   <span 
+      title={email} 
+      className="hidden sm:block text-sm text-gray-600 max-w-[18ch] truncate" 
+    > 
+      {email} 
+    </span> 
+    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-white text-sm"> 
+      {initial} 
+    </span> 
+  </summary> 
+ 
+  <div 
+    className="absolute right-0 mt-2 w-44 rounded-xl border bg-white shadow-lg p-1 z-50" 
+    onClick={(e) => e.stopPropagation()} 
+  > 
+    <Link 
+      href="/reset-password" 
+      className="block w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-gray-50" 
+    > 
+      Change password 
+    </Link> 
+    {/* Add your profile/settings page later if you have one */} 
+    {/* <Link href="/profile" className="block w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-gray-50">Profile</Link> */} 
+    <button 
+      onClick={onLogout} 
+      className="block w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-gray-50" 
+    > 
+      Sign out 
+    </button> 
+  </div> 
+</details> 
+  
+
+); } 
 
 export default function TopBar() { 
 
@@ -22,73 +103,55 @@ export default function TopBar() {
 
   
 
-  // UI state 
-
-  const [signedIn, setSignedIn] = useState(false); 
-
   const [email, setEmail] = useState<string | null>(null); 
 
   const [mounted, setMounted] = useState(false); 
 
   
 
-  // On mount: read current session and subscribe to auth changes 
+  // Read session on mount & listen for changes (prevents hydration mismatch) 
 
   useEffect(() => { 
 
-    let isActive = true; 
+    let active = true; 
 
   
 
-    const load = async () => { 
+    (async () => { 
 
       const { data } = await supabase.auth.getSession(); 
 
-      if (!isActive) return; 
-
-      setSignedIn(!!data.session?.user); 
+      if (!active) return; 
 
       setEmail(data.session?.user?.email ?? null); 
 
       setMounted(true); 
 
-    }; 
-
-    load(); 
+    })(); 
 
   
 
-    const { data: listener } = supabase.auth.onAuthStateChange( 
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => { 
 
-      (_event: AuthChangeEvent, session: Session | null) => { 
+      if (!active) return; 
 
-        if (!isActive) return; 
+      setEmail(session?.user?.email ?? null); 
 
-        setSignedIn(!!session?.user); 
-
-        setEmail(session?.user?.email ?? null); 
-
-      } 
-
-    ); 
+    }); 
 
   
 
     return () => { 
 
-      isActive = false; 
+      active = false; 
 
-      listener.subscription.unsubscribe(); 
+      sub.subscription.unsubscribe(); 
 
     }; 
 
   }, []); 
 
-  
-
-  // Avoid mismatch while the client hydrates 
-
-  if (!mounted) return null; 
+if (!mounted) return null; 
 
   
 
@@ -106,52 +169,26 @@ export default function TopBar() {
 
   } 
 
-  return (
+return ( 
+
     <div className="mx-auto max-w-screen-sm px-4 h-14 flex items-center justify-between"> 
 
-{/* left: title */} 
-    <div className="font-semibold">QSL Fantasy</div> 
+      {/* Left: brand/title */}  
 
-{/* right: actions */} 
-    <div className="flex items-center gap-4"> 
+      <Link href="/" className="font-semibold"> 
 
-        {signedIn ? ( 
+        QSL Fantasy 
 
-          <> 
+      </Link> 
 
-            {email ? ( 
+ 
 
-              <span className="text-sm text-gray-600 hidden sm:inline"> {email}</span> 
-
-            ) : null} 
-
-            <button 
-
-              onClick={handleLogout} 
-
-              className="text-sm underline text-gray-700 hover:text-black" 
-
-            > 
-
-              Sign out 
-
-            </button> 
-
-          </> 
-
-        ) : ( 
-
-          <Link href="/login" className="text-sm underline"> 
-
-            Login 
-
-          </Link> 
-
-        )} 
-
-  
+      {/* Right: Language + User menu */} 
+      <div className="flex items-center gap-4"> 
 
         <LanguageToggle /> 
+
+        <UserMenu email={email} onLogout={handleLogout} /> 
 
       </div> 
 
@@ -160,4 +197,3 @@ export default function TopBar() {
   ); 
 
 } 
-
