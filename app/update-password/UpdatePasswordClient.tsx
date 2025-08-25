@@ -2,11 +2,11 @@
 
   
 
-import { useEffect, useState } from "react"; 
+import { useEffect, useState, type FormEvent } from "react"; 
 
 import { useRouter } from "next/navigation"; 
 
-import { supabase } from "@/lib/supabaseClient"; 
+import {supabase} from "@/lib/supabaseClient"; 
 
   
 
@@ -22,11 +22,11 @@ export default function UpdatePasswordClient() {
 
   const [msg, setMsg] = useState(""); 
 
-  const [saving, setSaving] = useState(false); 
+  const [loading, setLoading] = useState(false); 
 
   
 
-  // On mount, see if we actually have a session from the email link 
+  // Load current session email from Supabase (magic link sets it) 
 
   useEffect(() => { 
 
@@ -38,29 +38,21 @@ export default function UpdatePasswordClient() {
 
       const { data } = await supabase.auth.getSession(); 
 
-      if (!mounted) return; 
+      if (mounted) { 
 
-  
+        setEmail(data.session?.user?.email ?? null); 
 
-      // If the magic link created a session, you'll have the user's email here 
-
-      const sessionEmail = data.session?.user?.email ?? null; 
-
-      setEmail(sessionEmail); 
+      } 
 
     } 
-
-  
 
     load(); 
 
   
 
-    // Also listen for auth state changes in case it arrives a moment later 
-
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => { 
 
-      setEmail(session?.user?.email ?? null); 
+      if (mounted) setEmail(session?.user?.email ?? null); 
 
     }); 
 
@@ -78,7 +70,7 @@ export default function UpdatePasswordClient() {
 
   
 
-  async function handleSubmit(e: React.FormEvent) { 
+  async function handleSubmit(e: FormEvent) { 
 
     e.preventDefault(); 
 
@@ -104,53 +96,68 @@ export default function UpdatePasswordClient() {
 
   
 
-    setSaving(true); 
-
-    const { error } = await supabase.auth.updateUser({ password: pw1 }); 
-
-    setSaving(false); 
-
-  
-
-    if (error) { 
-
-      setMsg(`Error: ${error.message}`); 
-
-      return; 
-
-    } 
-
-  
-
-    setMsg("Password updated! Redirecting to login…"); 
-
-    // Sign out to clear the one-time recovery session, then send them to login 
+    setLoading(true); 
 
     try { 
 
-      await supabase.auth.signOut(); 
+      const { error } = await supabase.auth.updateUser({ password: pw1 }); 
+
+      if (error) { 
+
+        setMsg(`Error: ${error.message}`); 
+
+        return; 
+
+      } 
+
+  
+
+      setMsg("✅ Password updated. Redirecting to login…"); 
+
+  
+
+      // Give the user 2s to read, then sign out + redirect 
+
+      setTimeout(async () => { 
+
+        try { 
+
+          await supabase.auth.signOut(); 
+
+        } finally { 
+
+          router.replace("/login"); 
+
+        } 
+
+      }, 2000); 
 
     } finally { 
 
-      router.replace("/login"); 
+      setLoading(false); 
 
     } 
 
   } 
 
-  return ( 
-
-   <div className="max-w-sm mx-auto mt-20 p-6 border rounded-2xl shadow bg-white"> 
+  return (
+      <div className="max-w-sm mx-auto mt-20 p-6 border rounded-2xl shadow bg-white"> 
 
       <h1 className="text-xl font-semibold mb-1">Set a new password</h1> 
 
       <p className="text-sm text-gray-600 mb-4"> 
 
-        {email ? <>for <span className="font-medium">{email}</span></> : "Checking session…"} 
+        {email ? ( 
+
+          <>for <span className="font-medium">{email}</span></> 
+
+        ) : ( 
+
+          "Checking session…" 
+
+        )} 
 
       </p> 
-
-  
 
       <form onSubmit={handleSubmit} className="space-y-4"> 
 
@@ -164,13 +171,13 @@ export default function UpdatePasswordClient() {
 
           onChange={(e) => setPw1(e.target.value)} 
 
-          required 
-
           className="w-full border rounded-xl p-3" 
+
+          required 
 
         /> 
 
-        <input 
+       <input 
 
           type="password" 
 
@@ -180,33 +187,45 @@ export default function UpdatePasswordClient() {
 
           onChange={(e) => setPw2(e.target.value)} 
 
-          required 
-
           className="w-full border rounded-xl p-3" 
 
-        /> 
+          required 
 
-  
+        /> 
 
         <button 
 
           type="submit" 
 
-          disabled={saving} 
+          disabled={loading} 
 
-          className="w-full h-12 rounded-2xl bg-black text-white font-medium disabled:opacity-60" 
+          className="w-full h-12 rounded-2xl bg-black text-white font-medium disabled:opacity-60 disabled:cursor-not-allowed" 
 
         > 
 
-          {saving ? "Updating…" : "Update Password"} 
+          {loading ? "Updating…" : "Update Password"} 
 
         </button> 
 
       </form> 
 
-  
+ 
 
-      {msg && <p className="mt-4 text-sm text-center text-gray-700">{msg}</p>} 
+      {msg && ( 
+
+        <div 
+
+          role="alert" 
+
+          className="mt-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 text-center" 
+
+        > 
+
+          {msg} 
+
+        </div> 
+
+      )} 
 
   
 
@@ -214,7 +233,7 @@ export default function UpdatePasswordClient() {
 
         <p className="mt-3 text-xs text-center text-gray-500"> 
 
-          If this page was opened directly, request a new reset link from{" "} 
+          If you opened this page directly, request a new link from{" "} 
 
           <a href="/reset-password" className="underline">Reset Password</a>. 
 
