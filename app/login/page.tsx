@@ -203,6 +203,16 @@ function LoginForm() {
 
         </button> 
 
+        <p className="mt-2 text-center text-sm text-red-600"> 
+
+          <a href="/reset-password" className="text-blue-600 underline"> 
+
+            Forgot password? 
+
+          </a> 
+
+        </p> 
+
  
 
      <p className="mt-2 text-center text-sm text-gray-600"> 
