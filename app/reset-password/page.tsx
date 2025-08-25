@@ -36,7 +36,7 @@ export default function ResetPasswordPage() {
 
       return; 
 
-    } 
+    }
 
   
 
@@ -48,9 +48,9 @@ export default function ResetPasswordPage() {
 
    <div className="space-y-4"> 
 
-      <form onSubmit={handleSend} className="rounded-2xl shadow p-4 bg-white space-y-3"> 
+      <form onSubmit={handleSend} className="space-y-4"> 
 
-        <h1 className="text-xl font-semibold">Reset your password</h1> 
+        <h1 className="text-xl font-semibold mb-4">Reset your password</h1> 
 
   
 
@@ -72,17 +72,16 @@ export default function ResetPasswordPage() {
 
   
 
-        <button type="submit" className="w-full h-12 rounded-2xl bg-black text-white font-medium"> 
+        <button 
+        type="submit" 
+        className="w-full h-12 rounded-2xl bg-black text-white font-medium"> 
 
           Send reset link 
 
         </button> 
 
-  
-
-        {msg ? <p className="text-sm text-center opacity-80">{msg}</p> : null} 
-
       </form> 
+      {msg && <p className="mt-4 text-sm text-center text-gray-600">{msg}</p>} 
 
     </div> 
 
