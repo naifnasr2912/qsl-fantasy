@@ -1,12 +1,10 @@
-// app/update-password/UpdatePasswordClient.tsx 
-
 "use client"; 
 
   
 
-import { useState } from "react"; 
+import { useEffect, useState } from "react"; 
 
-import { useRouter, useSearchParams } from "next/navigation"; 
+import { useRouter } from "next/navigation"; 
 
 import { supabase } from "@/lib/supabaseClient"; 
 
@@ -16,23 +14,67 @@ export default function UpdatePasswordClient() {
 
   const router = useRouter(); 
 
-  const params = useSearchParams(); 
+  const [email, setEmail] = useState<string | null>(null); 
 
-  
+  const [pw1, setPw1] = useState(""); 
 
-  // Supabase sends either access_token or code (PKCE) in the URL 
-
-  const accessToken = params.get("access_token"); 
-
-  const code = params.get("code"); 
-
-  
-
-  const [password, setPassword] = useState(""); 
-
-  const [confirm, setConfirm] = useState(""); 
+  const [pw2, setPw2] = useState(""); 
 
   const [msg, setMsg] = useState(""); 
+
+  const [saving, setSaving] = useState(false); 
+
+  
+
+  // On mount, see if we actually have a session from the email link 
+
+  useEffect(() => { 
+
+    let mounted = true; 
+
+  
+
+    async function load() { 
+
+      const { data } = await supabase.auth.getSession(); 
+
+      if (!mounted) return; 
+
+  
+
+      // If the magic link created a session, you'll have the user's email here 
+
+      const sessionEmail = data.session?.user?.email ?? null; 
+
+      setEmail(sessionEmail); 
+
+    } 
+
+  
+
+    load(); 
+
+  
+
+    // Also listen for auth state changes in case it arrives a moment later 
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => { 
+
+      setEmail(session?.user?.email ?? null); 
+
+    }); 
+
+  
+
+    return () => { 
+
+      mounted = false; 
+
+      sub.subscription.unsubscribe(); 
+
+    }; 
+
+  }, []); 
 
   
 
@@ -44,7 +86,7 @@ export default function UpdatePasswordClient() {
 
   
 
-    if (password.length < 6) { 
+    if (pw1.length < 6) { 
 
       setMsg("Password must be at least 6 characters."); 
 
@@ -52,7 +94,7 @@ export default function UpdatePasswordClient() {
 
     } 
 
-    if (password !== confirm) { 
+    if (pw1 !== pw2) { 
 
       setMsg("Passwords do not match."); 
 
@@ -62,50 +104,55 @@ export default function UpdatePasswordClient() {
 
   
 
+    setSaving(true); 
+
+    const { error } = await supabase.auth.updateUser({ password: pw1 }); 
+
+    setSaving(false); 
+
+  
+
+    if (error) { 
+
+      setMsg(`Error: ${error.message}`); 
+
+      return; 
+
+    } 
+
+  
+
+    setMsg("Password updated! Redirecting to login…"); 
+
+    // Sign out to clear the one-time recovery session, then send them to login 
+
     try { 
 
-      // If you’re using the “Reset Password” email from Supabase, 
+      await supabase.auth.signOut(); 
 
-      // the magic link sets a session automatically in the browser. 
-
-      // For PKCE flow, exchange the code first: 
-
-      if (code && !accessToken) { 
-
-        const { error } = await supabase.auth.exchangeCodeForSession(code); 
-
-        if (error) throw error; 
-
-      } 
-
-  
-
-      const { error: updErr } = await supabase.auth.updateUser({ password }); 
-
-      if (updErr) throw updErr; 
-
-  
-
-      setMsg("Password updated. Redirecting…"); 
+    } finally { 
 
       router.replace("/login"); 
-
-    } catch (err: any) { 
-
-      setMsg(err?.message ?? "Could not update password."); 
 
     } 
 
   } 
 
   return ( 
-    <div className="space-y-4"> 
 
-      <h1 className="text-xl font-semibold">Update password</h1> 
+   <div className="max-w-sm mx-auto mt-20 p-6 border rounded-2xl shadow bg-white"> 
+
+      <h1 className="text-xl font-semibold mb-1">Set a new password</h1> 
+
+      <p className="text-sm text-gray-600 mb-4"> 
+
+        {email ? <>for <span className="font-medium">{email}</span></> : "Checking session…"} 
+
+      </p> 
 
   
 
-      <form onSubmit={handleSubmit} className="rounded-2xl shadow p-4 bg-white space-y-3"> 
+      <form onSubmit={handleSubmit} className="space-y-4"> 
 
         <input 
 
@@ -113,13 +160,13 @@ export default function UpdatePasswordClient() {
 
           placeholder="New password" 
 
-          value={password} 
+          value={pw1} 
 
-          onChange={(e) => setPassword(e.target.value)} 
-
-          className="w-full rounded-xl border p-3" 
+          onChange={(e) => setPw1(e.target.value)} 
 
           required 
+
+          className="w-full border rounded-xl p-3" 
 
         /> 
 
@@ -127,31 +174,53 @@ export default function UpdatePasswordClient() {
 
           type="password" 
 
-          placeholder="Confirm password" 
+          placeholder="Confirm new password" 
 
-          value={confirm} 
+          value={pw2} 
 
-          onChange={(e) => setConfirm(e.target.value)} 
-
-          className="w-full rounded-xl border p-3" 
+          onChange={(e) => setPw2(e.target.value)} 
 
           required 
+
+          className="w-full border rounded-xl p-3" 
 
         /> 
 
   
 
-        <button type="submit" className="w-full h-12 rounded-2xl bg-black text-white font-medium"> 
+        <button 
 
-          Save password 
+          type="submit" 
+
+          disabled={saving} 
+
+          className="w-full h-12 rounded-2xl bg-black text-white font-medium disabled:opacity-60" 
+
+        > 
+
+          {saving ? "Updating…" : "Update Password"} 
 
         </button> 
 
+      </form> 
+
   
 
-        {msg ? <p className="text-sm text-center opacity-80">{msg}</p> : null} 
+      {msg && <p className="mt-4 text-sm text-center text-gray-700">{msg}</p>} 
 
-      </form> 
+  
+
+      {!email && ( 
+
+        <p className="mt-3 text-xs text-center text-gray-500"> 
+
+          If this page was opened directly, request a new reset link from{" "} 
+
+          <a href="/reset-password" className="underline">Reset Password</a>. 
+
+        </p> 
+
+      )} 
 
     </div> 
 
